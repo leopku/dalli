@@ -182,6 +182,8 @@ Default is Marshal.
 Default is zlib, implemented under `Dalli::Compressor`.
 If serving compressed data using nginx's HttpMemcachedModule, set `memcached_gzip_flag 2` and use `Dalli::GzipCompressor`
 
+**php_compatible**: Php compatible option to communicating with php, especially for [php-memcached](https://github.com/php-memcached-dev/php-memcached). If true, `serializer` was forced to JSON and `compress` was forced to false. Default is false.
+
 Features and Changes
 ------------------------
 

@@ -51,7 +51,7 @@ module Dalli
 
       # if php_compatible was true, forcing serializer to JSON and compress to false
       # maybe Compressor can compatible with php, but NOT tested.
-      @options.merge({serializer: JSON, compress: false}) if options[:php_compatible]
+      @options.merge!({serializer: JSON, compress: false}) if options[:php_compatible]
     end
 
     def name
