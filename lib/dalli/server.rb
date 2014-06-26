@@ -28,6 +28,8 @@ module Dalli
       :serializer => Marshal,
       :username => nil,
       :password => nil,
+      # where compatible with php (default false). if php_compatible was true, serializer was forced to JSON and compress was forced to false
+      :php_compatible => false,
       :keepalive => true
     }
 
@@ -46,6 +48,10 @@ module Dalli
       @error = nil
       @pid = nil
       @inprogress = nil
+
+      # if php_compatible was true, forcing serializer to JSON and compress to false
+      # maybe Compressor can compatible with php, but NOT tested.
+      @options.merge({serializer: JSON, compress: false}) if options[:php_compatible]
     end
 
     def name
@@ -414,14 +420,22 @@ module Dalli
       end
 
       flags = 0
-      flags |= FLAG_COMPRESSED if compressed
-      flags |= FLAG_SERIALIZED if marshalled
+      # if php_compatible options was true, flags was always 0 for compatible reason
+      unless @options[:php_compatible]
+        flags |= FLAG_COMPRESSED if compressed
+        flags |= FLAG_SERIALIZED if marshalled    
+      end
       [value, flags]
     end
 
     def deserialize(value, flags)
       value = self.compressor.decompress(value) if (flags & FLAG_COMPRESSED) != 0
-      value = self.serializer.load(value) if (flags & FLAG_SERIALIZED) != 0
+      # if php_compatible options is true, deserialize content using JSON
+      if @options[:php_compatible]
+        value = self.serializer.load(value)
+      else
+        value = self.serializer.load(value) if (flags & FLAG_SERIALIZED) != 0      
+      end
       value
     rescue TypeError
       raise if $!.message !~ /needs to have method `_load'|exception class\/object expected|instance of IO needed|incompatible marshal file format/
