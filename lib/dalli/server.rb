@@ -49,9 +49,14 @@ module Dalli
       @pid = nil
       @inprogress = nil
 
-      # if php_compatible was true, forcing serializer to JSON and compress to false
-      # maybe Compressor can compatible with php, but NOT tested.
-      @options.merge!({serializer: JSON, compress: false}) if options[:php_compatible]
+      # if php_compatible was true, forcing serializer to JSON if serializer was Marshal.
+      # And compressor was force to gzip.
+      # Otherwise, it means in php side, you MUST specify `memcached.compression_type` to `zlib`.
+      # And `memcached.serializer` MUST specify to `php` (tested), `json`(NOT tested) or `json_array`(NOT tested)
+      if options[:php_compatible]
+        @options.merge!({serializer: JSON}) if (@options[:serializer] == Marshal)
+        @options.merge!({compressor: Dalli::Compressor}) if @options[:compressor] != Dalli::Compressor
+      end
     end
 
     def name
@@ -429,11 +434,14 @@ module Dalli
     end
 
     def deserialize(value, flags)
-      value = self.compressor.decompress(value) if (flags & FLAG_COMPRESSED) != 0
-      # if php_compatible options is true, deserialize content using JSON
+      # if php_compatible options is true, payloads ONLY can be stored as JSON or raw text.
       if @options[:php_compatible]
-        value = self.serializer.load(value)
+        value = self.compressor.decompress(value[4..-1]) if flags != 0
+        value = self.serializer.load(value) # try deserialize payloads as JSON. Otherwise return payloads directly.
+      rescue
+        return value
       else
+        value = self.compressor.decompress(value) if (flags & FLAG_COMPRESSED) != 0
         value = self.serializer.load(value) if (flags & FLAG_SERIALIZED) != 0      
       end
       value
