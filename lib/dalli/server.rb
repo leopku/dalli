@@ -438,13 +438,13 @@ module Dalli
       if @options[:php_compatible]
         value = self.compressor.decompress(value[4..-1]) if flags != 0
         value = self.serializer.load(value) # try deserialize payloads as JSON. Otherwise return payloads directly.
-      rescue
-        return value
       else
         value = self.compressor.decompress(value) if (flags & FLAG_COMPRESSED) != 0
         value = self.serializer.load(value) if (flags & FLAG_SERIALIZED) != 0      
       end
       value
+    rescue JSON::ParserError
+      return value
     rescue TypeError
       raise if $!.message !~ /needs to have method `_load'|exception class\/object expected|instance of IO needed|incompatible marshal file format/
       raise UnmarshalError, "Unable to unmarshal value: #{$!.message}"
